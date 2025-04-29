@@ -600,6 +600,56 @@
             color: #ffd700;
             font-weight: bold;
         }
+        
+        .touch-active {
+            opacity: 0.7 !important;
+            transform: scale(0.97) !important;
+        }
+        
+        /* Share section styles */
+        .share-section {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: rgba(58, 24, 102, 0.7);
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .share-section p {
+            margin: 0 0 10px 0;
+            font-weight: bold;
+            color: #ffcc00;
+        }
+        
+        .share-section a {
+            display: inline-block;
+            padding: 8px 15px;
+            background-color: #6a368b;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            border: 2px solid #9752c4;
+            word-break: break-all;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+        
+        .share-section a:hover, .share-section a:active {
+            background-color: #9752c4;
+        }
+        
+        /* Info panel styles */
+        .info-panel {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: rgba(58, 24, 102, 0.7);
+            border-radius: 10px;
+        }
+        
+        .info-panel h3 {
+            margin-top: 0;
+            color: #ffcc00;
+        }
     </style>
 </head>
 <body>
@@ -680,6 +730,19 @@
                 <button id="buy-more-no">No, I'm done</button>
             </div>
         </div>
+    </div>
+
+    <div class="info-panel" style="display: none;">
+        <h3>Session Info</h3>
+        <p>Session ID: <span id="session-id">Loading...</span></p>
+        <p>Coins: <span id="coin-count">10.00</span></p>
+        <p>Spins: <span id="spin-count">0</span></p>
+    </div>
+    
+    <!-- Add shareable URL section -->
+    <div class="share-section">
+        <p>Share this session with others:</p>
+        <a id="session-url" href="#">Loading session link...</a>
     </div>
 
     <script src="public/js/session.js"></script>
