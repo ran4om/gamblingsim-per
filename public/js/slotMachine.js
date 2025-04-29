@@ -61,27 +61,7 @@ class SlotMachine {
      * Initialize a new player
      */
     initPlayer() {
-        // Check URL for player parameter
-        const urlParams = new URLSearchParams(window.location.search);
-        const playerParam = urlParams.get('player');
-        
-        if (playerParam) {
-            // Try to get existing player from session
-            const sessionId = urlParams.get('session');
-            if (sessionId && sessionManager.data.sessions[sessionId]) {
-                const sessionData = sessionManager.data.sessions[sessionId];
-                if (sessionData.players[playerParam]) {
-                    // Use existing player
-                    this.currentPlayer = playerParam;
-                    this.playerData = sessionData.players[playerParam];
-                    this.coinCount = Math.floor(this.playerData.coinsLeft * 100);
-                    this.updateCreditDisplay();
-                    return;
-                }
-            }
-        }
-        
-        // No valid player found in URL, create a new one
+        // Create a new player in the session
         this.currentPlayer = sessionManager.createNewPlayer();
         this.playerData = sessionManager.getPlayer(this.currentPlayer);
         
@@ -168,16 +148,6 @@ class SlotMachine {
             }, { passive: false });
         } else {
             this.spinButton.addEventListener('click', () => this.handleSpin());
-        }
-        
-        // Info button to toggle session info
-        const infoButton = document.getElementById('info-button');
-        const infoPanel = document.querySelector('.info-panel');
-        if (infoButton && infoPanel) {
-            infoButton.addEventListener('click', () => {
-                const isVisible = infoPanel.style.display !== 'none';
-                infoPanel.style.display = isVisible ? 'none' : 'block';
-            });
         }
         
         // Buy more coins buttons
@@ -278,11 +248,10 @@ class SlotMachine {
         
         // Update player data and record balance history
         const dollars = this.coinCount / 100;
-        sessionManager.updatePlayerData(this.currentPlayer, { coinsLeft: dollars });
-        sessionManager.recordBalanceChange(this.currentPlayer, dollars);
+        this.playerData.coinsLeft = dollars;
         
-        // Update URL with current player
-        sessionManager.updateUrlWithPlayerInfo(this.currentPlayer);
+        // Record the balance change in the player's history
+        sessionManager.recordBalanceChange(this.currentPlayer, dollars, 'update');
         
         // Disable spin button if not enough coins
         this.spinButton.disabled = this.coinCount < this.SPIN_COST;

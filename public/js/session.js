@@ -15,27 +15,11 @@ class SessionManager {
         // Check URL for session parameter
         const urlParams = new URLSearchParams(window.location.search);
         const sessionParam = urlParams.get('session');
-        const playerParam = urlParams.get('player');
         
-        // If session parameter exists, use it or create it
-        if (sessionParam) {
-            if (!this.data.sessions[sessionParam]) {
-                // Create the session if it doesn't exist
-                this.data.sessions[sessionParam] = {
-                    id: sessionParam,
-                    startTime: Date.now(),
-                    players: {},
-                    totalPlayers: 0
-                };
-            }
+        // If session parameter exists and it's a valid session, use it
+        if (sessionParam && this.data.sessions[sessionParam]) {
             this.currentSessionId = sessionParam;
             this.data.currentSessionId = sessionParam;
-            
-            // If player parameter exists, use it
-            if (playerParam && this.data.sessions[sessionParam].players[playerParam]) {
-                this.currentPlayerId = playerParam;
-            }
-            
             this.saveData();
         } else {
             this.currentSessionId = this.getOrCreateCurrentSessionId();
@@ -47,14 +31,6 @@ class SessionManager {
         const sessionIdElement = document.getElementById('session-id');
         if (sessionIdElement) {
             sessionIdElement.textContent = this.currentSessionId;
-        }
-        
-        // Generate shareable URL for this session
-        const sessionUrlElement = document.getElementById('session-url');
-        if (sessionUrlElement) {
-            const baseUrl = window.location.href.split('?')[0];
-            sessionUrlElement.textContent = `${baseUrl}?session=${this.currentSessionId}`;
-            sessionUrlElement.href = `${baseUrl}?session=${this.currentSessionId}`;
         }
         
         // Clean up old sessions
@@ -160,9 +136,6 @@ class SessionManager {
         currentSession.totalPlayers++;
         this.data.playerIdCounter = this.playerIdCounter;
         this.saveData();
-        
-        // Update URL with player ID for sharing
-        this.updateUrlWithPlayerInfo(playerId);
         
         return playerId;
     }
@@ -380,25 +353,13 @@ class SessionManager {
     }
 
     /**
-     * Get session URL with player ID for sharing
+     * Get a sharable URL for the current session
      */
-    getSessionUrl(sessionId, playerId) {
-        const baseUrl = window.location.href.split('?')[0];
-        if (playerId) {
-            return `${baseUrl}?session=${sessionId}&player=${playerId}`;
-        }
-        return `${baseUrl}?session=${sessionId}`;
-    }
-    
-    /**
-     * Update the URL with session and player info without refreshing
-     */
-    updateUrlWithPlayerInfo(playerId) {
-        if (history.pushState) {
-            const baseUrl = window.location.href.split('?')[0];
-            const newUrl = this.getSessionUrl(this.currentSessionId, playerId);
-            window.history.pushState({path: newUrl}, '', newUrl);
-        }
+    getSessionUrl(sessionId) {
+        const targetSessionId = sessionId || this.currentSessionId;
+        const baseUrl = window.location.href.split('?')[0]; // Remove any existing query parameters
+        const basePath = baseUrl.substring(0, baseUrl.lastIndexOf('/') + 1);
+        return `${basePath}index.html?session=${targetSessionId}`;
     }
 
     /**
