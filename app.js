@@ -790,6 +790,16 @@ function createInstance() {
 }
 
 function showInstanceDashboard(instanceId) {
+  // Check if the instance exists
+  if (!appData.instances[instanceId]) {
+    console.error(`Instance ${instanceId} not found`);
+    // Try to load from localStorage
+    if (!loadAppState() || !appData.instances[instanceId]) {
+      alert('Invalid instance ID');
+      return;
+    }
+  }
+  
   appData.currentInstanceId = instanceId;
   elements.instanceIdSpan.textContent = instanceId;
   

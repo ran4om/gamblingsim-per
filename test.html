@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gambling Addiction Psychology Demo - Tests</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .test-controls {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background-color: #fff;
+      padding: 15px;
+      border-radius: 5px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      z-index: 10000;
+    }
+    
+    .test-controls h2 {
+      margin-top: 0;
+      margin-bottom: 15px;
+    }
+    
+    .test-output {
+      margin-top: 20px;
+      padding: 15px;
+      background-color: #f5f5f5;
+      border-radius: 5px;
+      max-height: 300px;
+      overflow-y: auto;
+      font-family: monospace;
+    }
+    
+    .test-pass {
+      color: green;
+    }
+    
+    .test-fail {
+      color: red;
+    }
+    
+    .test-button {
+      padding: 10px 15px;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="test-controls">
+    <h2>Test Controls</h2>
+    <button class="test-button" id="run-all-tests">Run All Tests</button>
+    <button class="test-button" id="clean-storage">Clean LocalStorage</button>
+    
+    <div class="test-output" id="test-output">
+      <p>Test output will appear here...</p>
+    </div>
+  </div>
+  
+  <div id="app">
+    <div id="notification-container" class="notification-container"></div>
+    
+    <!-- Required screens for the app to function during tests -->
+    <div id="login-screen" class="screen hidden">
+      <h1>Test Environment</h1>
+    </div>
+    
+    <div id="admin-dashboard" class="screen hidden">
+      <h1>Admin Dashboard</h1>
+    </div>
+    
+    <div id="instance-dashboard" class="screen hidden">
+      <h1>Instance Dashboard</h1>
+    </div>
+    
+    <div id="slot-machine" class="screen hidden">
+      <h1>Slot Machine</h1>
+    </div>
+  </div>
+  
+  <!-- Required elements for the tests -->
+  <div style="display:none">
+    <div id="instance-id"><span></span></div>
+    <p id="total-players">0</p>
+    <p id="avg-spins">0</p>
+    <p id="avg-wins">0</p>
+    <p id="avg-losses">0</p>
+    <p id="players-wanted-buy">0</p>
+    <p id="avg-net">0</p>
+    <canvas id="wins-vs-losses-chart"></canvas>
+    <canvas id="coins-left-chart"></canvas>
+    <canvas id="coin-balance-time-chart"></canvas>
+    <canvas id="time-between-spins-chart"></canvas>
+    <p id="coin-balance">0</p>
+    <div class="reel symbol"></div>
+    <button id="spin-btn">Spin</button>
+    <div id="message"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="sounds.js"></script>
+  <script src="app.js"></script>
+  <script src="test.js"></script>
+  
+  <script>
+    // Capture console output for display in the test output element
+    const testOutput = document.getElementById('test-output');
+    const originalConsoleLog = console.log;
+    const originalConsoleError = console.error;
+    
+    console.log = function() {
+      const args = Array.from(arguments);
+      // Call original console.log
+      originalConsoleLog.apply(console, args);
+      
+      // Add to test output
+      const message = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' ');
+      const logItem = document.createElement('p');
+      
+      if (message.includes('PASSED')) {
+        logItem.classList.add('test-pass');
+      } else if (message.includes('FAILED')) {
+        logItem.classList.add('test-fail');
+      }
+      
+      logItem.textContent = message;
+      testOutput.appendChild(logItem);
+      
+      // Auto-scroll to bottom
+      testOutput.scrollTop = testOutput.scrollHeight;
+    };
+    
+    console.error = function() {
+      const args = Array.from(arguments);
+      // Call original console.error
+      originalConsoleError.apply(console, args);
+      
+      // Add to test output with red color
+      const message = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' ');
+      const logItem = document.createElement('p');
+      logItem.classList.add('test-fail');
+      logItem.textContent = message;
+      testOutput.appendChild(logItem);
+      
+      // Auto-scroll to bottom
+      testOutput.scrollTop = testOutput.scrollHeight;
+    };
+    
+    // Set up button handlers
+    document.getElementById('run-all-tests').addEventListener('click', function() {
+      testOutput.innerHTML = '';
+      runTests();
+    });
+    
+    document.getElementById('clean-storage').addEventListener('click', function() {
+      localStorage.removeItem('gamblingSim');
+      console.log('LocalStorage cleaned');
+    });
+    
+    // Create dummy elements needed for tests
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('Test environment initialized. Click "Run All Tests" to begin testing.');
+    });
+  </script>
+</body>
+</html> 

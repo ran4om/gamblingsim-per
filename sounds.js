@@ -1,35 +1,47 @@
 // Sound effects for the gambling app
-const sounds = {
-  spin: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-slot-machine-wheel-1932.mp3'),
-  win: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-casino-bling-achievement-2067.mp3'),
-  bigWin: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3'),
-  lose: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-negative-tone-interface-tap-2576.mp3'),
-  nearMiss: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-game-notification-wave-alarm-987.mp3'),
-  buttonClick: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-game-ball-tap-2073.mp3'),
-  coinDrop: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-coins-handling-1939.mp3')
+const soundUrls = {
+  spin: 'https://assets.mixkit.co/sfx/preview/mixkit-slot-machine-wheel-1932.mp3',
+  win: 'https://assets.mixkit.co/sfx/preview/mixkit-casino-bling-achievement-2067.mp3',
+  bigWin: 'https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3',
+  lose: 'https://assets.mixkit.co/sfx/preview/mixkit-negative-tone-interface-tap-2576.mp3',
+  nearMiss: 'https://assets.mixkit.co/sfx/preview/mixkit-game-notification-wave-alarm-987.mp3',
+  buttonClick: 'https://assets.mixkit.co/sfx/preview/mixkit-game-ball-tap-2073.mp3',
+  coinDrop: 'https://assets.mixkit.co/sfx/preview/mixkit-coins-handling-1939.mp3'
 };
 
-// Volume settings
-sounds.spin.volume = 0.3;
-sounds.win.volume = 0.5;
-sounds.bigWin.volume = 0.7;
-sounds.lose.volume = 0.3;
-sounds.nearMiss.volume = 0.4;
-sounds.buttonClick.volume = 0.2;
-sounds.coinDrop.volume = 0.4;
+// Create Audio objects with fallback
+const sounds = {};
+let soundsLoaded = false;
+let soundsError = false;
 
 // Functions to play sounds
 function playSound(soundName) {
-  // Only play sounds if they've been loaded and user has interacted with the page
-  if (sounds[soundName] && document.documentElement.hasAttribute('data-user-interacted')) {
+  // Skip if sounds had loading errors or user hasn't interacted
+  if (soundsError || !document.documentElement.hasAttribute('data-user-interacted')) {
+    return;
+  }
+  
+  // Check if sounds exist
+  if (!sounds[soundName]) {
+    console.log(`Sound ${soundName} not found`);
+    return;
+  }
+  
+  try {
     // Stop and reset the sound first (in case it's already playing)
     sounds[soundName].pause();
     sounds[soundName].currentTime = 0;
     
-    // Play the sound
+    // Play the sound with error handling
     sounds[soundName].play().catch(error => {
       console.log(`Failed to play sound: ${error}`);
+      // Mark as error so we don't keep trying
+      if (error.name === 'NotSupportedError') {
+        soundsError = true;
+      }
     });
+  } catch (e) {
+    console.log(`Error playing sound: ${e.message}`);
   }
 }
 
@@ -38,10 +50,44 @@ function initSounds() {
   // Mark that user has interacted with the page
   document.documentElement.setAttribute('data-user-interacted', 'true');
   
-  // Preload all sounds
-  Object.values(sounds).forEach(sound => {
-    sound.load();
-  });
+  // Only initialize once
+  if (soundsLoaded) return;
+  
+  // Create and load all sound objects
+  try {
+    Object.keys(soundUrls).forEach(soundName => {
+      sounds[soundName] = new Audio(soundUrls[soundName]);
+      sounds[soundName].volume = getSoundVolume(soundName);
+      
+      // Add error handling for each sound
+      sounds[soundName].addEventListener('error', () => {
+        console.log(`Error loading sound: ${soundName}`);
+      });
+      
+      // Start loading the sound
+      sounds[soundName].load();
+    });
+    
+    soundsLoaded = true;
+  } catch (e) {
+    console.log(`Error initializing sounds: ${e.message}`);
+    soundsError = true;
+  }
+}
+
+// Helper function to get volume for each sound
+function getSoundVolume(soundName) {
+  const volumes = {
+    spin: 0.3,
+    win: 0.5,
+    bigWin: 0.7,
+    lose: 0.3,
+    nearMiss: 0.4,
+    buttonClick: 0.2,
+    coinDrop: 0.4
+  };
+  
+  return volumes[soundName] || 0.5;
 }
 
 // Add sound triggers to UI elements
