@@ -1,0 +1,288 @@
+/**
+ * Mobile-specific styles for the slot machine application
+ */
+
+/* Global mobile optimizations */
+* {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    box-sizing: border-box;
+}
+
+html {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+body {
+    overscroll-behavior: none;
+    touch-action: manipulation;
+    height: 100%;
+    width: 100%;
+    overflow-x: hidden;
+    position: fixed;
+    margin: 0;
+    padding: 0;
+    max-width: 100vw;
+}
+
+/* Container adjustments for mobile */
+.container {
+    padding: 10px;
+    max-width: 100%;
+    width: 100%;
+    overflow-y: auto;
+    height: 100%;
+    -webkit-overflow-scrolling: touch;
+    margin: 0 auto;
+}
+
+/* Optimize touch targets */
+button, .button, .buy-more-btn, .spin-button {
+    min-height: 44px; /* Minimum recommended size for touch targets */
+    -webkit-touch-callout: none;
+    user-select: none;
+}
+
+.touch-active {
+    transform: scale(0.97) !important;
+    transition: transform 0.1s ease-in-out;
+}
+
+/* Fix zoom issues on input focus */
+.input-focus {
+    position: fixed;
+    height: 100%;
+    width: 100%;
+}
+
+/* Portrait mode optimizations (vertical orientation) */
+@media screen and (orientation: portrait) {
+    .slot-container {
+        flex-direction: row;
+    }
+    
+    .slot-reels {
+        height: 30vh;
+        max-height: 300px;
+    }
+    
+    .header h1 {
+        font-size: 1.8rem;
+    }
+    
+    .header p {
+        font-size: 1rem;
+    }
+    
+    .controls {
+        margin-top: 10px;
+    }
+    
+    .game-container {
+        width: 95%;
+        margin: 0 auto;
+    }
+    
+    .slot-machine {
+        width: 95%;
+    }
+}
+
+/* Landscape mode optimizations (horizontal orientation) */
+@media screen and (orientation: landscape) and (max-width: 900px) {
+    body {
+        position: static; /* Allow scrolling in landscape */
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+    
+    .container {
+        padding: 5px;
+        overflow-y: auto;
+    }
+    
+    .slot-machine {
+        max-width: 90%;
+        padding: 10px;
+        margin: 0 auto;
+    }
+    
+    .slot-reels {
+        height: 25vh;
+        min-height: 120px;
+    }
+    
+    .reel {
+        font-size: 2.5rem;
+    }
+    
+    .header h1 {
+        font-size: 1.7rem;
+        margin-top: 5px;
+        margin-bottom: 5px;
+    }
+    
+    .header p {
+        font-size: 0.9rem;
+        margin-top: 5px;
+    }
+    
+    .slot-container {
+        margin-bottom: 10px;
+    }
+    
+    .spin-button {
+        margin-top: 5px;
+        margin-bottom: 10px;
+    }
+    
+    .game-container {
+        padding: 10px;
+    }
+    
+    .footer {
+        margin-top: 10px;
+        padding: 5px;
+    }
+}
+
+/* iPhone SE and other small devices */
+@media screen and (max-width: 375px) {
+    .slot-reels {
+        height: 140px;
+    }
+    
+    .reel {
+        font-size: 32px;
+    }
+    
+    .spin-button {
+        padding: 8px 20px;
+        font-size: 14px;
+        min-width: 120px;
+    }
+    
+    .paylines {
+        width: 18px;
+    }
+    
+    .payline {
+        width: 16px;
+        height: 16px;
+        font-size: 9px;
+    }
+    
+    .win-message {
+        font-size: 14px;
+        padding: 8px;
+    }
+    
+    .message {
+        width: 90%;
+        font-size: 13px;
+        padding: 10px;
+    }
+    
+    .header h1 {
+        font-size: 1.4rem;
+    }
+}
+
+/* iPhone 14 Pro Max specific adjustments */
+@media only screen and (device-width: 428px), 
+       only screen and (device-width: 430px),
+       only screen and (width: 428px), 
+       only screen and (width: 430px) {
+    .game-container, .slot-machine {
+        width: 95% !important;
+        max-width: 95% !important;
+    }
+    
+    .session-info-container {
+        width: 100%;
+        padding: 8px;
+    }
+    
+    .container {
+        padding: 8px;
+    }
+    
+    /* Fix for landscape mode */
+    @media (orientation: landscape) {
+        .slot-machine {
+            margin: 0 auto;
+            padding: 10px;
+        }
+        
+        .slot-reels {
+            height: 140px;
+        }
+    }
+}
+
+/* Notch-friendly layout for iPhones */
+@supports (padding-top: env(safe-area-inset-top)) {
+    .container {
+        padding-left: max(10px, env(safe-area-inset-left));
+        padding-right: max(10px, env(safe-area-inset-right));
+        padding-top: max(10px, env(safe-area-inset-top));
+        padding-bottom: max(10px, env(safe-area-inset-bottom));
+    }
+}
+
+/* Better scroll handling */
+.smooth-scroll {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+}
+
+/* Improve animation performance on mobile */
+.reel, .win-message, .message, .buy-more-btn {
+    will-change: transform;
+    backface-visibility: hidden;
+    transform: translateZ(0);
+}
+
+/* Vibration feedback - used with JS */
+@keyframes subtle-vibration {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-1px); }
+    75% { transform: translateX(1px); }
+}
+
+/* Add bottom safe area for navigation gestures */
+.bottom-nav-safe-area {
+    height: env(safe-area-inset-bottom, 0);
+    width: 100%;
+}
+
+/* Make the buy more dialog more mobile friendly */
+.modal-content {
+    width: 85%;
+    max-width: 300px;
+    padding: 20px;
+}
+
+.modal-buttons button {
+    min-height: 44px;
+    min-width: 80px;
+    font-size: 14px;
+}
+
+/* Force content to fit viewport width */
+@media screen and (max-width: 430px) {
+    html, body {
+        width: 100vw;
+        min-width: 100vw;
+        max-width: 100vw;
+        overflow-x: hidden;
+    }
+    
+    .container, .game-container, .slot-machine {
+        width: 95%;
+        max-width: 95%;
+        overflow-x: hidden;
+    }
+} 

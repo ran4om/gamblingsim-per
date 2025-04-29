@@ -1,0 +1,1161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <!-- Fix for iPhone Pro Max viewport width -->
+    <script>
+        (function() {
+            // Detect iPhone 14 Pro Max and other notch iPhones
+            const isIPhoneWithNotch = /iPhone/.test(navigator.userAgent) && 
+                                     (window.innerWidth >= 390 && window.innerWidth <= 430) && 
+                                     (window.screen.height >= 844);
+            
+            if (isIPhoneWithNotch) {
+                // Get the current viewport meta
+                const viewportMeta = document.querySelector('meta[name="viewport"]');
+                
+                // For iPhone Pro Max, set the width to device-width
+                if (viewportMeta) {
+                    viewportMeta.setAttribute('content', 
+                        'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
+                    
+                    // Fix for the width issue on these devices
+                    document.documentElement.style.setProperty('--viewport-width', `${window.innerWidth}px`);
+                    
+                    // Force a small reflow to ensure proper width calculation
+                    setTimeout(function() {
+                        document.body.style.width = '100%';
+                    }, 50);
+                }
+            }
+        })();
+    </script>
+    <meta name="theme-color" content="#3a1866">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Slot Machine Simulation</title>
+    <link rel="stylesheet" href="public/css/style.css">
+    <link rel="stylesheet" href="public/css/mobile.css">
+    <!-- Add mobile touch feedback library -->
+    <script>
+        // Simple touch feedback handler
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add active class on touch start
+            document.addEventListener('touchstart', function(e) {
+                if (e.target.classList.contains('spin-button') || e.target.classList.contains('button') || e.target.classList.contains('buy-more-btn')) {
+                    e.target.classList.add('touch-active');
+                }
+            }, false);
+            
+            // Remove active class on touch end
+            document.addEventListener('touchend', function(e) {
+                const activeElements = document.querySelectorAll('.touch-active');
+                activeElements.forEach(el => el.classList.remove('touch-active'));
+            }, false);
+            
+            // Prevent zooming on double tap for interactive elements
+            const interactiveElements = document.querySelectorAll('button, .button, .buy-more-btn, .spin-button');
+            interactiveElements.forEach(el => {
+                el.addEventListener('touchend', function(e) {
+                    e.preventDefault();
+                    // Trigger click after preventing default
+                    setTimeout(() => {
+                        if (!el.disabled) {
+                            el.click();
+                        }
+                    }, 10);
+                });
+            });
+            
+            // Additional fix for iPhone zoom issues - lock the width
+            function lockViewport() {
+                const meta = document.querySelector('meta[name="viewport"]');
+                if (meta) {
+                    // Lock to the current screen width
+                    const width = window.innerWidth;
+                    meta.setAttribute('content', `width=${width}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover`);
+                }
+            }
+            
+            // Apply on orientation change
+            window.addEventListener('orientationchange', function() {
+                setTimeout(lockViewport, 300);
+            });
+            
+            // Fix for zooming on input focus for iOS
+            const inputs = document.querySelectorAll('input');
+            inputs.forEach(input => {
+                input.addEventListener('focus', function() {
+                    document.body.classList.add('input-focus');
+                });
+                input.addEventListener('blur', function() {
+                    document.body.classList.remove('input-focus');
+                });
+            });
+        });
+    </script>
+    <style>
+        /* Standalone Slot Machine Styles */
+        body {
+            font-family: Arial, sans-serif;
+            color: white;
+            overscroll-behavior: none; /* Prevent pull-to-refresh on mobile */
+            touch-action: manipulation; /* Optimize for touch */
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            max-width: 100vw;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 100vw;
+            margin: 0 auto;
+            overflow-x: hidden;
+            box-sizing: border-box;
+        }
+        
+        .game-container {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            max-width: 100%;
+            box-sizing: border-box;
+            margin: 0 auto;
+        }
+        
+        .slot-machine {
+            background-color: #3a1866;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 600px;
+            padding: 20px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-sizing: border-box;
+        }
+        
+        .credit {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #ffcc00;
+            text-shadow: 0 0 5px #ff8800;
+        }
+        
+        .slot-container {
+            display: flex;
+            width: 100%;
+            justify-content: space-between;
+            background-color: #260f4d;
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+        }
+        
+        .paylines {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            width: 30px;
+        }
+        
+        .payline {
+            text-align: center;
+            font-size: 14px;
+            background-color: #4a1e8c;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 2px 0;
+        }
+        
+        .slot-display {
+            width: 70%;
+            background-color: #000;
+            border: 3px solid #6a328b;
+            border-radius: 5px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .slot-reels {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            height: 300px;
+            background: linear-gradient(to bottom, #444, #222);
+        }
+        
+        .reel {
+            width: 32%;
+            background-color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 64px;
+            margin: 0 2px;
+            border: 2px solid #333;
+        }
+        
+        .controls {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-sizing: border-box;
+        }
+        
+        .buttons {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        
+        .button {
+            padding: 10px 20px;
+            margin: 0 10px;
+            background-color: #6a368b;
+            border: 2px solid #9752c4;
+            color: white;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            text-align: center;
+            min-width: 80px;
+        }
+        
+        .spin-button {
+            padding: 15px 40px;
+            background-color: #ff4500;
+            color: white;
+            border: none;
+            border-radius: 30px;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #c62d00;
+            transition: all 0.1s;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            user-select: none;
+            min-height: 60px;
+            min-width: 160px;
+        }
+        
+        .spin-button:hover {
+            background-color: #ff5722;
+        }
+        
+        .spin-button:active, .spin-button.touch-active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 #c62d00;
+        }
+        
+        .spin-button:disabled {
+            background-color: #999;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+        
+        .win-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 200, 0, 0.8);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 5px;
+            font-size: 24px;
+            font-weight: bold;
+            z-index: 10;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+            text-align: center;
+            width: 80%;
+            max-width: 280px;
+        }
+        
+        .big-win {
+            background-color: rgba(255, 215, 0, 0.9);
+            color: #8b0000;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.1); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+        
+        .message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(139, 0, 0, 0.9);
+            color: #ffcc00;
+            padding: 15px;
+            border-radius: 5px;
+            width: 80%;
+            text-align: center;
+            z-index: 10;
+            font-weight: bold;
+        }
+        
+        .buy-more-btn {
+            position: absolute;
+            top: 65%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #ffcc00;
+            color: #8b0000;
+            border: none;
+            border-radius: 25px;
+            padding: 10px 20px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 10;
+            box-shadow: 0 4px 0 #cc9900;
+            min-height: 44px;
+            min-width: 140px;
+            font-size: 16px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .buy-more-btn:hover {
+            background-color: #ffd700;
+        }
+        
+        .buy-more-btn:active, .buy-more-btn.touch-active {
+            transform: translate(-50%, -50%) translateY(4px);
+            box-shadow: 0 0 0 #cc9900;
+        }
+        
+        /* iPhone specific fixes */
+        @supports (-webkit-touch-callout: none) {
+            /* iOS devices */
+            body {
+                position: fixed;
+                width: 100%;
+                height: 100%;
+            }
+            
+            .container {
+                height: 100%;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            /* iPhone 14 Pro Max specific adjustments */
+            @media only screen 
+            and (device-width: 428px) 
+            and (device-height: 926px) 
+            and (-webkit-device-pixel-ratio: 3) {
+                .slot-machine {
+                    width: 95%;
+                    padding: 15px 10px;
+                }
+                
+                .game-container {
+                    padding: 15px 10px;
+                }
+                
+                .session-info-container {
+                    max-width: 95%;
+                }
+            }
+        }
+        
+        /* Mobile optimizations */
+        @media (max-width: 768px) {
+            .slot-machine {
+                padding: 15px 10px;
+                border-radius: 10px;
+            }
+            
+            .credit {
+                font-size: 20px;
+                margin-bottom: 15px;
+            }
+            
+            .slot-container {
+                padding: 8px;
+            }
+            
+            .slot-reels {
+                height: 220px;
+            }
+            
+            .reel {
+                font-size: 48px;
+            }
+            
+            .spin-button {
+                padding: 12px 30px;
+                font-size: 18px;
+                min-height: 50px;
+                min-width: 140px;
+            }
+            
+            .win-message {
+                font-size: 18px;
+                padding: 10px 15px;
+            }
+            
+            .paylines {
+                width: 24px;
+            }
+            
+            .payline {
+                width: 20px;
+                height: 20px;
+                font-size: 12px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 1.5rem;
+                margin: 10px 0;
+            }
+            
+            .header p {
+                font-size: 0.9rem;
+                margin: 5px 0;
+            }
+            
+            .slot-machine {
+                padding: 10px;
+                width: 95%;
+            }
+            
+            .game-container {
+                padding: 10px;
+                width: 95%;
+                margin: 0 auto;
+            }
+            
+            .slot-reels {
+                height: 180px;
+            }
+            
+            .reel {
+                font-size: 36px;
+            }
+            
+            .paylines {
+                width: 20px;
+            }
+            
+            .payline {
+                width: 18px;
+                height: 18px;
+                font-size: 10px;
+            }
+            
+            .spin-button {
+                padding: 10px 25px;
+                font-size: 16px;
+            }
+            
+            .win-message {
+                font-size: 16px;
+                padding: 8px 12px;
+            }
+            
+            .message {
+                font-size: 14px;
+            }
+            
+            .buy-more-btn {
+                font-size: 14px;
+                padding: 8px 16px;
+            }
+            
+            .session-info-container {
+                flex-direction: column;
+                align-items: center;
+                gap: 5px;
+            }
+        }
+        
+        /* Reel animation styles */
+        @keyframes spin-reel {
+            0% { 
+                transform: translateY(0);
+                background-color: white;
+            }
+            10% {
+                transform: translateY(-100px);
+                background-color: #f8f8f8;
+            }
+            45% { 
+                transform: translateY(300px);
+                background-color: #ffffaa;
+            }
+            90% {
+                transform: translateY(-10px);
+                background-color: #ffee99;
+            }
+            100% { 
+                transform: translateY(0);
+                background-color: white;
+            }
+        }
+        
+        .reel.spinning {
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 10px rgba(255, 255, 0, 0.6);
+            z-index: 2;
+        }
+        
+        .reel.spinning::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(to bottom, 
+                rgba(255,255,255,0.9) 0%,
+                rgba(255,255,255,0) 15%,
+                rgba(255,255,255,0) 85%,
+                rgba(255,255,255,0.9) 100%);
+            z-index: 2;
+            pointer-events: none;
+        }
+        
+        /* Flashing lights around reels during spin */
+        @keyframes flash-lights {
+            0% { box-shadow: 0 0 5px #ffcc00; }
+            25% { box-shadow: 0 0 15px #ff9900; }
+            50% { box-shadow: 0 0 20px #ff6600; }
+            75% { box-shadow: 0 0 15px #ff9900; }
+            100% { box-shadow: 0 0 5px #ffcc00; }
+        }
+        
+        .slot-display.spinning {
+            animation: flash-lights 0.5s infinite;
+        }
+        
+        /* Win message animation */
+        .win-message {
+            transition: all 0.3s ease-out;
+            animation: bounce 0.5s ease-out;
+        }
+        
+        @keyframes bounce {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.8; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+        
+        /* Near miss animation */
+        .near-miss {
+            position: absolute;
+            top: 50%;
+            right: 10px;
+            transform: translateY(-50%);
+            color: yellow;
+            font-size: 24px;
+            animation: blink 0.5s infinite;
+        }
+        
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
+
+        /* Session info styles */
+        .session-info-container {
+            background-color: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .session-id-display {
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+        
+        .session-id {
+            color: #ffd700;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Slot Machine Experience</h1>
+            <p>Educational demonstration on gambling psychology</p>
+        </div>
+        
+        <div class="game-container">
+            <div class="session-info-container">
+                <div id="coin-count-display">Wallet: $<span id="coin-count">10.00</span></div>
+                <div class="session-id-display">Session ID: <span id="session-id" class="session-id"></span></div>
+            </div>
+            
+            <div class="slot-machine">
+                <div class="credit" id="credit-display">CREDIT 10.00</div>
+                
+                <div class="slot-container">
+                    <div class="paylines">
+                        <div class="payline">1</div>
+                        <div class="payline">2</div>
+                        <div class="payline">3</div>
+                        <div class="payline">4</div>
+                        <div class="payline">5</div>
+                        <div class="payline">6</div>
+                        <div class="payline">7</div>
+                        <div class="payline">8</div>
+                        <div class="payline">9</div>
+                        <div class="payline">10</div>
+                    </div>
+                    
+                    <div class="slot-display">
+                        <div class="slot-reels">
+                            <div class="reel">🍒</div>
+                            <div class="reel">🍋</div>
+                            <div class="reel">🍊</div>
+                        </div>
+                    </div>
+                    
+                    <div class="paylines">
+                        <div class="payline">11</div>
+                        <div class="payline">12</div>
+                        <div class="payline">13</div>
+                        <div class="payline">14</div>
+                        <div class="payline">15</div>
+                        <div class="payline">16</div>
+                        <div class="payline">17</div>
+                        <div class="payline">18</div>
+                        <div class="payline">19</div>
+                        <div class="payline">20</div>
+                    </div>
+                </div>
+                
+                <div class="controls">
+                    <div class="buttons">
+                        <div class="button">LINES<span>20</span></div>
+                        <div class="button">INFO</div>
+                    </div>
+                    
+                    <button id="spin-button" class="spin-button">SPIN</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>This is an educational tool demonstrating gambling mechanics</p>
+            <a href="admin.html" class="admin-link">Admin Dashboard</a>
+        </div>
+    </div>
+
+    <div id="buy-more-modal" class="modal">
+        <div class="modal-content">
+            <h2>You're out of coins!</h2>
+            <p>Would you like to buy more?</p>
+            <div class="modal-buttons">
+                <button id="buy-more-yes">Yes, give me 10 more</button>
+                <button id="buy-more-no">No, I'm done</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="public/js/session.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Game state
+        let gameState = {
+            coins: 1000, // 10.00 credits in cents
+            spins: 0,
+            wins: 0,
+            losses: 0,
+            nearMisses: 0,
+            bigWinGiven: false,
+            startTime: Date.now(),
+            playerId: null,
+            lastBonusChanceSpin: 0 // Track when we last gave bonus chance
+        };
+        
+        // Constants
+        const SPIN_COST = 40; // 0.40 credits
+        const SYMBOLS = ['🍒', '🍋', '🍊', '🍇', '🍉', '💎', '7️⃣', '🎰'];
+        
+        // DOM Elements
+        const creditDisplay = document.getElementById('credit-display');
+        const coinCountDisplay = document.getElementById('coin-count');
+        const spinButton = document.getElementById('spin-button');
+        const reels = document.querySelectorAll('.reel');
+        const slotDisplay = document.querySelector('.slot-display');
+        const buyMoreModal = document.getElementById('buy-more-modal');
+        const buyMoreYesButton = document.getElementById('buy-more-yes');
+        const buyMoreNoButton = document.getElementById('buy-more-no');
+        
+        // Initialize player in the session system
+        function initPlayer() {
+            // Create a new player in the session manager
+            gameState.playerId = sessionManager.createNewPlayer();
+            const playerData = sessionManager.getPlayer(gameState.playerId);
+            
+            // Initialize with 10.00 credits
+            playerData.coinsLeft = 10.00;
+            sessionManager.updatePlayerData(gameState.playerId, { coinsLeft: 10.00 });
+            
+            updateCreditDisplay();
+        }
+        
+        // Initialize event listeners
+        function initEventListeners() {
+            spinButton.addEventListener('click', handleSpin);
+            
+            // "Buy more" buttons
+            buyMoreYesButton.addEventListener('click', () => {
+                gameState.coins = 1000; // Reset to 10.00 credits
+                updateCreditDisplay();
+                buyMoreModal.classList.remove('active');
+            });
+            
+            buyMoreNoButton.addEventListener('click', () => {
+                buyMoreModal.classList.remove('active');
+                endGame();
+            });
+            
+            // Simple button animations
+            spinButton.addEventListener('mousedown', function() {
+                if (!this.disabled) {
+                    this.style.transform = 'translateY(4px)';
+                    this.style.boxShadow = '0 0 0 #c62d00';
+                }
+            });
+            
+            spinButton.addEventListener('mouseup', function() {
+                if (!this.disabled) {
+                    this.style.transform = '';
+                    this.style.boxShadow = '0 4px 0 #c62d00';
+                }
+            });
+            
+            spinButton.addEventListener('mouseleave', function() {
+                if (!this.disabled) {
+                    this.style.transform = '';
+                    this.style.boxShadow = '0 4px 0 #c62d00';
+                }
+            });
+            
+            // Save stats when leaving the page
+            window.addEventListener('beforeunload', savePlayerStats);
+        }
+        
+        // Format credit display (cents to dollars)
+        function formatCredit(cents) {
+            return (cents / 100).toFixed(2);
+        }
+        
+        // Update credit display
+        function updateCreditDisplay() {
+            creditDisplay.textContent = 'CREDIT ' + formatCredit(gameState.coins);
+            coinCountDisplay.textContent = formatCredit(gameState.coins);
+            
+            // Update session data
+            sessionManager.updatePlayerData(gameState.playerId, {
+                coinsLeft: parseFloat(formatCredit(gameState.coins))
+            });
+            
+            // Disable spin button if not enough coins
+            spinButton.disabled = gameState.coins < SPIN_COST;
+        }
+        
+        // Handle spin button click
+        function handleSpin() {
+            // Check if player has enough coins
+            if (gameState.coins < SPIN_COST) {
+                showOutOfCoinsMessage();
+                return;
+            }
+            
+            // Deduct cost
+            gameState.coins -= SPIN_COST;
+            gameState.spins++;
+            
+            // Update session data
+            sessionManager.updatePlayerData(gameState.playerId, {
+                coinsLeft: parseFloat(formatCredit(gameState.coins)),
+                spins: gameState.spins
+            });
+            
+            updateCreditDisplay();
+            
+            // Disable button during animation
+            spinButton.disabled = true;
+            
+            // Remove any existing win message during spin
+            removeElement('.win-message');
+            removeElement('.message');
+            removeElement('.buy-more-btn');
+            removeElement('.near-miss');
+            
+            // Add flashing lights animation
+            slotDisplay.classList.add('spinning');
+            
+            // Start the spinning animation
+            startSpinAnimation().then(() => {
+                // Process the spin result
+                const result = processSpinResult();
+                
+                // Update credits with winnings
+                gameState.coins += result.win_amount;
+                
+                // Update session data
+                if (result.is_win) {
+                    gameState.wins++;
+                    sessionManager.updatePlayerData(gameState.playerId, {
+                        coinsLeft: parseFloat(formatCredit(gameState.coins)),
+                        wins: gameState.wins
+                    });
+                } else {
+                    gameState.losses++;
+                    sessionManager.updatePlayerData(gameState.playerId, {
+                        coinsLeft: parseFloat(formatCredit(gameState.coins)),
+                        losses: gameState.losses
+                    });
+                }
+                
+                updateCreditDisplay();
+                
+                // Check for near miss
+                if (result.is_near_miss) {
+                    displayNearMiss();
+                    gameState.nearMisses++;
+                    sessionManager.updatePlayerData(gameState.playerId, {
+                        nearMisses: gameState.nearMisses
+                    });
+                }
+                
+                // Show win message if applicable
+                if (result.win_amount > 0) {
+                    showWinMessage(result.win_amount, result.is_big_win);
+                }
+                
+                // Check if out of coins
+                if (gameState.coins < SPIN_COST) {
+                    showOutOfCoinsMessage();
+                }
+            });
+        }
+        
+        // Start the spinning animation
+        function startSpinAnimation() {
+            return new Promise(resolve => {
+                const originalSymbols = [];
+                
+                // Store original symbols and start spinning effect
+                reels.forEach((reel, index) => {
+                    originalSymbols.push(reel.textContent);
+                    
+                    // Add spinning class
+                    reel.classList.add('spinning');
+                    
+                    // Start the rapid symbol change animation
+                    let spinInterval = setInterval(() => {
+                        reel.textContent = SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
+                    }, 100);
+                    
+                    // Use setTimeout to create a staggered spinning effect
+                    setTimeout(() => {
+                        // Clear the rapid symbol change
+                        clearInterval(spinInterval);
+                        
+                        // Apply main reel spinning animation
+                        reel.style.animation = `spin-reel 1.5s ease-out`;
+                        
+                        // Remove animation after it completes
+                        setTimeout(() => {
+                            reel.style.animation = '';
+                            reel.classList.remove('spinning');
+                            
+                            // If this is the last reel, resolve the promise
+                            if (index === reels.length - 1) {
+                                // Remove flashing lights
+                                slotDisplay.classList.remove('spinning');
+                                resolve();
+                            }
+                        }, 1500);
+                    }, 500 + (index * 300)); // Staggered start for each reel
+                });
+            });
+        }
+        
+        // Process the result of a spin
+        function processSpinResult() {
+            // Check for bonus win chance (every 4-7 spins)
+            const spinsSinceLastBonus = gameState.spins - gameState.lastBonusChanceSpin;
+            const isInBonusRange = spinsSinceLastBonus >= 4 && spinsSinceLastBonus <= 7;
+            
+            if (isInBonusRange) {
+                // 50% chance of small win
+                if (Math.random() < 0.5) {
+                    gameState.lastBonusChanceSpin = gameState.spins;
+                    return generateSmallWin();
+                }
+                // Reset the bonus counter even if no win given
+                gameState.lastBonusChanceSpin = gameState.spins;
+            }
+            
+            // First 5 spins logic - higher win chance
+            let winChance, isBigWin;
+            
+            if (gameState.spins <= 5) {
+                // Guarantee one big win within first 5 spins if not already given
+                if (!gameState.bigWinGiven && (gameState.spins === 3 || (gameState.spins === 5 && !gameState.bigWinGiven))) {
+                    const result = generateBigWin();
+                    gameState.bigWinGiven = true;
+                    return result;
+                }
+                
+                // Higher general win chance (40%)
+                winChance = 40;
+            } else {
+                // Lower win chance after first 5 spins (12%)
+                winChance = 12;
+            }
+            
+            // Determine if this spin is a win based on the win chance
+            const isWin = (Math.random() * 100 <= winChance);
+            
+            // For spins after the first 5, determine if it's a big win (1% chance if it's a win)
+            isBigWin = (gameState.spins > 5 && isWin && Math.random() * 100 <= 8); // ~1% of total spins
+            
+            if (isBigWin) {
+                const result = generateBigWin();
+                gameState.bigWinGiven = true;
+                return result;
+            } else if (isWin) {
+                return generateSmallWin();
+            } else {
+                // Not a win - 30% chance of near miss
+                if (Math.random() * 100 <= 30) {
+                    return generateNearMiss();
+                } else {
+                    return generateLoss();
+                }
+            }
+        }
+        
+        // Generate a big win
+        function generateBigWin() {
+            // Use premium symbols (last 3)
+            const premiumSymbols = SYMBOLS.slice(5, 8);
+            const winSymbol = premiumSymbols[Math.floor(Math.random() * premiumSymbols.length)];
+            
+            return {
+                symbols: [winSymbol, winSymbol, winSymbol],
+                win_amount: Math.floor(Math.random() * 51) + 250, // 250-300
+                is_win: true,
+                is_big_win: true,
+                is_near_miss: false
+            };
+        }
+        
+        // Generate a small win
+        function generateSmallWin() {
+            // Use common symbols (first 5)
+            const commonSymbols = SYMBOLS.slice(0, 5);
+            const winSymbol = commonSymbols[Math.floor(Math.random() * commonSymbols.length)];
+            
+            return {
+                symbols: [winSymbol, winSymbol, winSymbol],
+                win_amount: Math.floor(Math.random() * 21) + 60, // 60-80
+                is_win: true,
+                is_big_win: false,
+                is_near_miss: false
+            };
+        }
+        
+        // Generate a near miss
+        function generateNearMiss() {
+            // Pick a random symbol for the near miss
+            const nearMissSymbol = SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
+            
+            // Create a result with 2 matching symbols
+            let resultSymbols = [nearMissSymbol, nearMissSymbol, ''];
+            
+            // Randomly decide if the near miss is at the beginning or end
+            if (Math.random() > 0.5) {
+                resultSymbols = ['', nearMissSymbol, nearMissSymbol];
+            }
+            
+            // Fill the remaining position with a different symbol
+            let otherSymbol;
+            do {
+                otherSymbol = SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
+            } while (otherSymbol === nearMissSymbol);
+            
+            // Replace the empty position
+            for (let i = 0; i < resultSymbols.length; i++) {
+                if (resultSymbols[i] === '') {
+                    resultSymbols[i] = otherSymbol;
+                    break;
+                }
+            }
+            
+            return {
+                symbols: resultSymbols,
+                win_amount: 0,
+                is_win: false,
+                is_big_win: false,
+                is_near_miss: true
+            };
+        }
+        
+        // Generate a loss
+        function generateLoss() {
+            let resultSymbols;
+            
+            // Fill with random symbols, ensuring they don't all match
+            do {
+                resultSymbols = Array(3).fill().map(() => 
+                    SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)]
+                );
+            } while (
+                resultSymbols[0] === resultSymbols[1] && 
+                resultSymbols[1] === resultSymbols[2]
+            );
+            
+            return {
+                symbols: resultSymbols,
+                win_amount: 0,
+                is_win: false,
+                is_big_win: false,
+                is_near_miss: false
+            };
+        }
+        
+        // Update the reels with the given symbols
+        function updateReels(symbols) {
+            reels.forEach((reel, index) => {
+                if (index < symbols.length) {
+                    reel.textContent = symbols[index];
+                }
+            });
+        }
+        
+        // Display a near miss indicator
+        function displayNearMiss() {
+            const nearMiss = document.createElement('div');
+            nearMiss.className = 'near-miss';
+            nearMiss.textContent = '!';
+            
+            slotDisplay.appendChild(nearMiss);
+            
+            // Remove after 2 seconds
+            setTimeout(() => {
+                nearMiss.style.opacity = '0';
+                setTimeout(() => nearMiss.remove(), 300);
+            }, 2000);
+        }
+        
+        // Show a win message
+        function showWinMessage(amount, isBigWin) {
+            // Remove any existing win message
+            removeElement('.win-message');
+            
+            // Create new win message
+            const winMessage = document.createElement('div');
+            winMessage.className = 'win-message' + (isBigWin ? ' big-win' : '');
+            winMessage.textContent = 'WIN! +' + amount + ' coins';
+            
+            // Add to the slot display
+            slotDisplay.appendChild(winMessage);
+            
+            // Add animation
+            winMessage.style.opacity = '0';
+            winMessage.style.transform = 'translate(-50%, -50%) scale(0.5)';
+            
+            setTimeout(() => {
+                winMessage.style.transition = 'all 0.5s ease-out';
+                winMessage.style.opacity = '1';
+                winMessage.style.transform = 'translate(-50%, -50%) scale(1)';
+            }, 500);
+            
+            // Remove after 3 seconds
+            setTimeout(() => {
+                winMessage.style.opacity = '0';
+                setTimeout(() => winMessage.remove(), 500);
+            }, 3000);
+        }
+        
+        // Show out of coins message
+        function showOutOfCoinsMessage() {
+            // Show the modal
+            buyMoreModal.classList.add('active');
+        }
+        
+        // Remove an element by selector
+        function removeElement(selector) {
+            const element = document.querySelector(selector);
+            if (element) element.remove();
+        }
+        
+        // Save player statistics
+        function savePlayerStats() {
+            const endTime = Date.now();
+            const playDuration = (endTime - gameState.startTime) / 1000; // in seconds
+            
+            sessionManager.updatePlayerData(gameState.playerId, {
+                endTime: endTime,
+                playDuration: playDuration,
+                coinsLeft: parseFloat(formatCredit(gameState.coins)),
+                spins: gameState.spins,
+                wins: gameState.wins,
+                losses: gameState.losses,
+                nearMisses: gameState.nearMisses
+            });
+            
+            sessionManager.endPlayerSession(gameState.playerId);
+        }
+        
+        // End game
+        function endGame() {
+            savePlayerStats();
+            spinButton.disabled = true;
+            
+            // Create message
+            const message = document.createElement('div');
+            message.className = 'message';
+            message.textContent = "Game Over! Thanks for playing!";
+            slotDisplay.appendChild(message);
+        }
+        
+        // Initialize the game
+        initPlayer();
+        initEventListeners();
+        
+        // Make sure the first spin result shows the actual symbols
+        reels.forEach((reel, index) => {
+            reel.textContent = SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
+        });
+    });
+    </script>
+</body>
+</html> 

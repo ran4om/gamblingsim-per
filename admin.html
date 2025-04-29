@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="public/css/style.css">
+    <link rel="stylesheet" href="public/css/admin.css">
+    <!-- Include Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="admin-container">
+        <div id="login-panel" class="login-panel">
+            <h2>Admin Login</h2>
+            <div class="login-form">
+                <input type="password" id="admin-password" placeholder="Enter password">
+                <button id="login-button">Login</button>
+                <p class="login-error" id="login-error"></p>
+            </div>
+        </div>
+
+        <div id="dashboard" class="dashboard hidden">
+            <div class="dashboard-header">
+                <h1>Admin Dashboard</h1>
+                <div class="controls">
+                    <button id="new-session-button">Start New Session</button>
+                    <button id="stop-session-button" class="warning-button">Stop Session</button>
+                    <button id="terminate-session-button" class="danger-button">Terminate Session</button>
+                    <button id="delete-session-button" class="danger-button">Delete Session</button>
+                    <button id="logout-button">Logout</button>
+                    <a href="index.html" class="return-link">Back to Game</a>
+                </div>
+            </div>
+
+            <div class="data-controls">
+                <div class="session-selector">
+                    <label for="session-select">Select Session:</label>
+                    <select id="session-select"></select>
+                    <button id="copy-url-button" class="copy-url-button" title="Copy session URL to clipboard">
+                        Copy URL
+                    </button>
+                    <span id="copy-notification" class="copy-notification">URL copied!</span>
+                </div>
+                <div class="reset-controls">
+                    <button id="reset-all-data-button" class="danger-button">Reset All Data</button>
+                </div>
+            </div>
+
+            <div class="dashboard-content">
+                <div class="stats-panels">
+                    <div class="stat-card">
+                        <h3>Total Players</h3>
+                        <div class="stat-value" id="total-players">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Average Spins</h3>
+                        <div class="stat-value" id="avg-spins">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Average Coins Left</h3>
+                        <div class="stat-value" id="avg-coins">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Win Rate</h3>
+                        <div class="stat-value" id="win-rate">0%</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Average Play Time</h3>
+                        <div class="stat-value" id="avg-time">0s</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Near Misses</h3>
+                        <div class="stat-value" id="near-misses">0</div>
+                    </div>
+                </div>
+
+                <!-- New Charts Section -->
+                <div class="charts-container">
+                    <div class="chart-row">
+                        <div class="chart-card">
+                            <h3>Individual Player Coin Balance Over Time</h3>
+                            <div class="chart-container">
+                                <canvas id="player-balance-chart"></canvas>
+                            </div>
+                            <p class="chart-description">Shows how each player's coin balance changed over time</p>
+                        </div>
+                    </div>
+                    <div class="chart-row">
+                        <div class="chart-card">
+                            <h3>Average Coin Balance Over Time</h3>
+                            <div class="chart-container">
+                                <canvas id="avg-balance-chart"></canvas>
+                            </div>
+                            <p class="chart-description">Shows the average coin balance across all players over time</p>
+                        </div>
+                    </div>
+                    <div class="chart-row">
+                        <div class="chart-card">
+                            <h3>Time Until Can't Gamble</h3>
+                            <div class="chart-container">
+                                <canvas id="time-until-broke-chart"></canvas>
+                            </div>
+                            <p class="chart-description">Shows when players first can't afford to spin</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="data-tables">
+                    <div class="table-container">
+                        <h3>Player Sessions</h3>
+                        <table id="player-data-table">
+                            <thead>
+                                <tr>
+                                    <th>Player ID</th>
+                                    <th>Spins</th>
+                                    <th>Wins</th>
+                                    <th>Losses</th>
+                                    <th>Coins Left</th>
+                                    <th>Play Time</th>
+                                    <th>Near Misses</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="player-data-body">
+                                <!-- Data will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modals -->
+    <div id="stop-confirm-modal" class="modal">
+        <div class="modal-content">
+            <h2>Stop Session</h2>
+            <p>Are you sure you want to stop this session? New players won't be able to join, but existing players can continue.</p>
+            <div class="modal-buttons">
+                <button id="stop-confirm-yes">Yes, Stop Session</button>
+                <button id="stop-confirm-no">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="terminate-confirm-modal" class="modal">
+        <div class="modal-content">
+            <h2>Terminate Session</h2>
+            <p>Are you sure you want to terminate this session? All active players will be disconnected immediately.</p>
+            <div class="modal-buttons">
+                <button id="terminate-confirm-yes">Yes, Terminate</button>
+                <button id="terminate-confirm-no">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="delete-confirm-modal" class="modal">
+        <div class="modal-content">
+            <h2>Delete Session</h2>
+            <p>Are you sure you want to delete this session? All data will be permanently lost.</p>
+            <div class="modal-buttons">
+                <button id="delete-confirm-yes">Yes, Delete</button>
+                <button id="delete-confirm-no">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="reset-all-data-modal" class="modal">
+        <div class="modal-content">
+            <h2>Reset All Data</h2>
+            <p>WARNING: This will delete ALL sessions and player data across the entire application.</p>
+            <p>This action cannot be undone. Are you sure?</p>
+            <div class="modal-buttons">
+                <button id="reset-all-confirm-yes">Yes, Reset Everything</button>
+                <button id="reset-all-confirm-no">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="public/js/session.js"></script>
+    <script src="public/js/admin.js"></script>
+</body>
+</html> 
