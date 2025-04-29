@@ -863,6 +863,22 @@ function startGame(instanceId, playerId) {
     }
   };
   
+  // Add event listeners for buying coins
+  elements.buyCoinsBtn.onclick = function() {
+    player.coins += 1000;
+    updateCoinDisplay(player.coins);
+    elements.buyMoreModal.classList.add('hidden');
+    elements.spinBtn.disabled = false;
+    player.recordWantToBuy();
+    saveAppState();
+    playSound('coinDrop');
+  };
+  
+  elements.noThanksBtn.onclick = function() {
+    elements.buyMoreModal.classList.add('hidden');
+    playSound('buttonClick');
+  };
+  
   // Save app state after setup
   saveAppState();
 }
@@ -1232,11 +1248,19 @@ function init() {
   // Setup all event listeners
   setupEventListeners();
   
-  if (instanceId && playerId) {
-    // Direct access to game (player link)
-    startGame(instanceId, playerId);
+  if (instanceId) {
+    // If we have an instance ID, this is a player accessing the game
+    appData.isAdmin = false; // Make sure we're not in admin mode
+    
+    if (playerId) {
+      // Returning player with ID
+      startGame(instanceId, playerId);
+    } else {
+      // New player joining an instance
+      startGame(instanceId, null);
+    }
   } else {
-    // Show login screen by default
+    // No instance ID - show login screen by default
     showScreen('login');
   }
 }
