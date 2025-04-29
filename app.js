@@ -15,7 +15,8 @@ const SYMBOLS = ['🍒', '🍊', '🍋', '🍇', '🍉', '🍓', '🍌', '💎',
 const appData = {
   instances: {},
   currentInstanceId: null,
-  isAdmin: false
+  isAdmin: false,
+  notifications: []
 };
 
 // DOM Elements
@@ -49,7 +50,8 @@ const elements = {
   playerCountInput: document.getElementById('player-count'),
   spinsPerPlayerInput: document.getElementById('spins-per-player'),
   startSimulationBtn: document.getElementById('start-simulation-btn'),
-  cancelSimulationBtn: document.getElementById('cancel-simulation-btn')
+  cancelSimulationBtn: document.getElementById('cancel-simulation-btn'),
+  notificationContainer: document.getElementById('notification-container')
 };
 
 // Stats elements
@@ -177,6 +179,27 @@ class Instance {
   addPlayer() {
     const playerId = `player_${Date.now()}`;
     this.players[playerId] = new Player(playerId);
+    
+    // Add notification for admin
+    if (appData.isAdmin) {
+      showNotification(`New player joined instance ${this.id.substring(0, 8)}`);
+    } else {
+      // Store notification for when admin logs in
+      appData.notifications.push({
+        type: 'new_player',
+        instanceId: this.id,
+        playerId: playerId,
+        time: Date.now(),
+        read: false,
+        message: `New player joined instance ${this.id.substring(0, 8)}`
+      });
+      // Save app state to persist the notification
+      saveAppState();
+    }
+    
+    // Save app state when a new player is added
+    saveAppState();
+    
     return playerId;
   }
   
@@ -762,8 +785,8 @@ function updateCharts(instance) {
 function createInstance() {
   const instanceId = `instance_${Date.now()}`;
   appData.instances[instanceId] = new Instance(instanceId);
+  saveAppState();
   updateInstancesList();
-  return instanceId;
 }
 
 function showInstanceDashboard(instanceId) {
@@ -771,128 +794,275 @@ function showInstanceDashboard(instanceId) {
   elements.instanceIdSpan.textContent = instanceId;
   
   const instance = appData.instances[instanceId];
-  if (instance.active) {
-    elements.startSessionBtn.disabled = true;
-    elements.endSessionBtn.disabled = false;
-  } else {
-    elements.startSessionBtn.disabled = false;
-    elements.endSessionBtn.disabled = true;
-  }
+  elements.startSessionBtn.disabled = instance.active;
+  elements.endSessionBtn.disabled = !instance.active;
   
   updateInstanceStats();
+  updateCharts(instance);
+  
   showScreen('instance');
+  
+  // Save current state
+  saveAppState();
 }
 
 // Player functions
 function startGame(instanceId, playerId) {
-  const instance = appData.instances[instanceId];
-  if (!instance) return;
-  
-  const player = instance.getPlayer(playerId);
-  if (!player) return;
-  
-  // Set up game with player's data
-  updateCoinDisplay(player.coins);
-  
-  // Initialize reels
-  for (let i = 0; i < elements.reels.length; i++) {
-    elements.reels[i].textContent = SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
+  if (!appData.instances[instanceId]) {
+    // Try to load from localStorage
+    if (!loadAppState() || !appData.instances[instanceId]) {
+      alert('Invalid instance ID');
+      return;
+    }
   }
+  
+  const instance = appData.instances[instanceId];
+  
+  // Create player if they don't exist
+  let player;
+  if (!playerId) {
+    playerId = instance.addPlayer();
+    player = instance.getPlayer(playerId);
+    
+    // Save the new player state
+    saveAppState();
+  } else {
+    player = instance.getPlayer(playerId);
+    if (!player) {
+      alert('Invalid player ID');
+      return;
+    }
+  }
+  
+  // Update session storage for player (not localStorage to avoid modifications)
+  sessionStorage.setItem('playerId', playerId);
+  sessionStorage.setItem('instanceId', instanceId);
+  
+  // Set up slot machine for player
+  updateCoinDisplay(player.coins);
   
   // Show slot machine screen
   showScreen('slot');
   
-  // Add event listeners for gameplay
-  elements.spinBtn.addEventListener('click', () => spinReels(player));
-  elements.buyCoinsBtn.addEventListener('click', () => {
-    player.coins += 1000;
-    elements.buyMoreModal.classList.add('hidden');
-    updateCoinDisplay(player.coins);
-    elements.spinBtn.disabled = false;
-    
-    // Play coin sound
-    playSound('coinDrop');
-  });
-  elements.noThanksBtn.addEventListener('click', () => {
-    elements.buyMoreModal.classList.add('hidden');
-    
-    // Play button click sound
-    playSound('buttonClick');
-  });
+  // Add event listener for spin button (removed when player leaves)
+  elements.spinBtn.onclick = function() {
+    if (player.coins >= SPIN_COST) {
+      spinReels(player);
+    } else {
+      showBuyMorePrompt(player);
+    }
+  };
+  
+  // Save app state after setup
+  saveAppState();
 }
 
 // Simulation functions
 function runSimulation(instanceId, playerCount, spinsPerPlayer) {
   const instance = appData.instances[instanceId];
-  if (!instance) return;
   
-  // Create players
+  // Create simulated players
+  const simulatedPlayers = [];
   for (let i = 0; i < playerCount; i++) {
     const playerId = instance.addPlayer();
-    const player = instance.getPlayer(playerId);
-    player.lastSpinTime = Date.now(); // Initialize to current time
-    
-    // Simulate spins
-    for (let j = 0; j < spinsPerPlayer; j++) {
-      // Skip if player runs out of coins
-      if (player.coins < SPIN_COST) {
-        if (Math.random() < 0.5) { // 50% chance to buy more coins
-          player.coins += 1000;
-          player.recordWantToBuy();
-        } else {
-          break;
-        }
-      }
+    simulatedPlayers.push(instance.getPlayer(playerId));
+  }
+  
+  // Perform spins for each player
+  simulatedPlayers.forEach(player => {
+    for (let i = 0; i < spinsPerPlayer && player.coins >= SPIN_COST; i++) {
+      // Determine outcome of the spin
+      const spinCount = player.spins;
+      const { result, symbols, winAmount } = determineSpinResults(spinCount);
       
-      // Deduct spin cost
-      player.coins -= SPIN_COST;
-      
-      // Determine result
-      const spinResults = determineSpinResults(player.spins);
-      
-      // Record result
-      if (spinResults.isWin) {
-        player.coins += spinResults.winAmount;
-        player.recordSpin('win', spinResults.symbols, spinResults.winAmount);
+      // Apply result to player
+      if (result === 'win') {
+        player.coins += winAmount - SPIN_COST;
       } else {
-        player.recordSpin('loss', spinResults.symbols);
+        player.coins -= SPIN_COST;
       }
       
-      // Add random time between spins (0.5 to 10 seconds)
-      const randomDelay = 500 + Math.random() * 9500;
-      player.lastSpinTime += randomDelay;
+      // Record the spin
+      player.recordSpin(result, symbols, winAmount);
+      
+      // Simulate the player wanting to buy more coins (30% chance when they're low)
+      if (player.coins < 100 && Math.random() < 0.3) {
+        player.recordWantToBuy();
+      }
+    }
+  });
+  
+  // Update stats and charts
+  updateInstanceStats();
+  updateCharts(instance);
+  
+  // Save simulation results
+  saveAppState();
+  
+  hideSimulationModal();
+  
+  showNotification(`Simulation completed: ${playerCount} players, ${spinsPerPlayer} spins each`);
+}
+
+// Persistence functions
+function saveAppState() {
+  // Create a copy of appData to save, excluding any circular references
+  const dataToSave = {
+    instances: {},
+    currentInstanceId: appData.currentInstanceId,
+    notifications: appData.notifications || []
+  };
+  
+  // Save each instance
+  for (const instanceId in appData.instances) {
+    const instance = appData.instances[instanceId];
+    dataToSave.instances[instanceId] = {
+      id: instance.id,
+      players: {},
+      active: instance.active,
+      createdAt: instance.createdAt
+    };
+    
+    // Save each player within the instance
+    for (const playerId in instance.players) {
+      const player = instance.players[playerId];
+      dataToSave.instances[instanceId].players[playerId] = { ...player };
     }
   }
   
-  // Update dashboard
-  updateInstanceStats();
+  // Save to localStorage
+  try {
+    localStorage.setItem('gamblingSim', JSON.stringify(dataToSave));
+  } catch (e) {
+    console.error('Failed to save app state:', e);
+  }
+}
+
+function loadAppState() {
+  try {
+    const savedData = localStorage.getItem('gamblingSim');
+    if (!savedData) return false;
+    
+    const parsedData = JSON.parse(savedData);
+    
+    // Clear current data
+    appData.instances = {};
+    appData.currentInstanceId = parsedData.currentInstanceId;
+    appData.notifications = parsedData.notifications || [];
+    
+    // Recreate instances and players
+    for (const instanceId in parsedData.instances) {
+      const savedInstance = parsedData.instances[instanceId];
+      const instance = new Instance(savedInstance.id);
+      instance.active = savedInstance.active;
+      instance.createdAt = savedInstance.createdAt;
+      
+      // Recreate each player
+      for (const playerId in savedInstance.players) {
+        const savedPlayer = savedInstance.players[playerId];
+        const player = new Player(playerId);
+        
+        // Copy all properties from saved player to the new player object
+        Object.assign(player, savedPlayer);
+        
+        // Add the player to the instance
+        instance.players[playerId] = player;
+      }
+      
+      // Add the instance to the app data
+      appData.instances[instanceId] = instance;
+    }
+    
+    return true;
+  } catch (e) {
+    console.error('Failed to load app state:', e);
+    return false;
+  }
+}
+
+// Notification system
+function createNotificationElement() {
+  // Create notification container if it doesn't exist
+  if (!document.getElementById('notification-container')) {
+    const container = document.createElement('div');
+    container.id = 'notification-container';
+    container.className = 'notification-container';
+    document.body.appendChild(container);
+    elements.notificationContainer = container;
+  }
+}
+
+function showNotification(message, duration = 5000) {
+  // Ensure notification container exists
+  createNotificationElement();
   
-  // Show completion message
-  alert(`Simulation complete! Added ${playerCount} players with up to ${spinsPerPlayer} spins each.`);
+  // Create notification element
+  const notification = document.createElement('div');
+  notification.className = 'notification';
+  notification.textContent = message;
+  
+  // Add close button
+  const closeBtn = document.createElement('span');
+  closeBtn.className = 'notification-close';
+  closeBtn.innerHTML = '&times;';
+  closeBtn.onclick = function() {
+    notification.remove();
+  };
+  
+  notification.appendChild(closeBtn);
+  elements.notificationContainer.appendChild(notification);
+  
+  // Auto-remove after duration
+  setTimeout(() => {
+    if (notification.parentNode) {
+      notification.remove();
+    }
+  }, duration);
+}
+
+function displayUnreadNotifications() {
+  if (!appData.notifications || !appData.isAdmin) return;
+  
+  const unreadNotifications = appData.notifications.filter(n => !n.read);
+  
+  unreadNotifications.forEach(notification => {
+    showNotification(notification.message);
+    notification.read = true;
+  });
+  
+  // Save updated notification status
+  saveAppState();
 }
 
 // Event Listeners
 function setupEventListeners() {
   // Login
-  elements.loginBtn.addEventListener('click', () => {
+  elements.loginBtn.addEventListener('click', function() {
     const username = elements.usernameInput.value;
     const password = elements.passwordInput.value;
     
     if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
       appData.isAdmin = true;
-      showScreen('admin');
+      
+      // Load app state from storage
+      loadAppState();
+      
+      // Update UI based on loaded state
       updateInstancesList();
-      playSound('buttonClick');
+      
+      // Show admin dashboard
+      showScreen('admin');
+      
+      // Display any unread notifications
+      displayUnreadNotifications();
     } else {
       alert('Invalid credentials');
-      playSound('lose');
     }
   });
   
-  // Admin dashboard
-  elements.createInstanceBtn.addEventListener('click', () => {
+  // Create instance
+  elements.createInstanceBtn.addEventListener('click', function() {
     createInstance();
-    playSound('buttonClick');
   });
   
   // Instance dashboard
@@ -992,42 +1162,74 @@ function setupEventListeners() {
       }
     }
   });
+  
+  // When window closes or refreshes, save state
+  window.addEventListener('beforeunload', function() {
+    saveAppState();
+  });
 }
 
 // Initialization
 function init() {
-  setupEventListeners();
+  // Try to load saved state
+  const stateLoaded = loadAppState();
   
-  // Check URL for player or admin mode
+  // Check if player URL parameters are provided
   const urlParams = new URLSearchParams(window.location.search);
   const instanceId = urlParams.get('instance');
+  const playerId = urlParams.get('player');
   
-  if (instanceId) {
-    // Player mode
-    if (!appData.instances[instanceId]) {
-      appData.instances[instanceId] = new Instance(instanceId);
+  // Create the notification container
+  createNotificationElement();
+  
+  // Add CSS for notification system
+  const notificationStyle = document.createElement('style');
+  notificationStyle.textContent = `
+    .notification-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1000;
+      max-width: 300px;
     }
     
-    const instance = appData.instances[instanceId];
-    const playerId = instance.addPlayer();
+    .notification {
+      background-color: #343a40;
+      color: white;
+      padding: 15px;
+      margin-bottom: 10px;
+      border-radius: 5px;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.16);
+      position: relative;
+      animation: notificationFadeIn 0.3s ease-in-out;
+    }
     
+    .notification-close {
+      position: absolute;
+      top: 5px;
+      right: 10px;
+      cursor: pointer;
+      font-size: 18px;
+    }
+    
+    @keyframes notificationFadeIn {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  `;
+  document.head.appendChild(notificationStyle);
+  
+  // Setup all event listeners
+  setupEventListeners();
+  
+  if (instanceId && playerId) {
+    // Direct access to game (player link)
     startGame(instanceId, playerId);
   } else {
-    // Default to login screen
+    // Show login screen by default
     showScreen('login');
   }
-  
-  // For testing/development: uncomment to auto-login as admin
-  /*
-  appData.isAdmin = true;
-  showScreen('admin');
-  const testInstanceId = createInstance();
-  
-  // Simulate some players
-  runSimulation(testInstanceId, 10, 30);
-  updateInstancesList();
-  */
 }
 
-// Start the application
-window.addEventListener('DOMContentLoaded', init); 
+// Initialize app when DOM is loaded
+document.addEventListener('DOMContentLoaded', init); 

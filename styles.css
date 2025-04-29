@@ -414,4 +414,37 @@ input {
   .reel {
     height: 100px;
   }
+}
+
+/* Notification Styles */
+.notification-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  max-width: 300px;
+}
+
+.notification {
+  background-color: #343a40;
+  color: white;
+  padding: 15px;
+  margin-bottom: 10px;
+  border-radius: 5px;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.16);
+  position: relative;
+  animation: notificationFadeIn 0.3s ease-in-out;
+}
+
+.notification-close {
+  position: absolute;
+  top: 5px;
+  right: 10px;
+  cursor: pointer;
+  font-size: 18px;
+}
+
+@keyframes notificationFadeIn {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
 } 
