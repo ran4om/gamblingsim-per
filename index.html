@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gambling Addiction Psychology Demo</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <div id="login-screen" class="screen">
+      <h1>Gambling Addiction Psychology Demo</h1>
+      <div class="login-container">
+        <h2>Login</h2>
+        <input type="text" id="username" placeholder="Username">
+        <input type="password" id="password" placeholder="Password">
+        <button id="login-btn">Login</button>
+        <p>For demo: admin/admin</p>
+      </div>
+    </div>
+
+    <div id="admin-dashboard" class="screen hidden">
+      <h1>Admin Dashboard</h1>
+      <div class="admin-controls">
+        <button id="create-instance-btn">Create New Instance</button>
+        <div id="instances-list">
+          <h2>Active Instances</h2>
+          <ul id="instance-items"></ul>
+        </div>
+      </div>
+    </div>
+
+    <div id="instance-dashboard" class="screen hidden">
+      <h1>Instance Dashboard</h1>
+      <div class="dashboard-header">
+        <h2 id="instance-id">Instance: <span></span></h2>
+        <button id="back-to-admin">Back to Admin</button>
+      </div>
+      <div class="dashboard-controls">
+        <button id="start-session-btn">Start Session</button>
+        <button id="end-session-btn" disabled>End Session</button>
+        <button id="copy-link-btn">Copy Player Link</button>
+        <button id="run-simulation-btn">Run Simulation</button>
+      </div>
+      <div class="dashboard-stats">
+        <h2>Live Statistics</h2>
+        <div class="stats-grid" id="live-stats">
+          <div class="stat-card">
+            <h3>Total Players</h3>
+            <p id="total-players">0</p>
+          </div>
+          <div class="stat-card">
+            <h3>Average Spins</h3>
+            <p id="avg-spins">0</p>
+          </div>
+          <div class="stat-card">
+            <h3>Average Wins</h3>
+            <p id="avg-wins">0</p>
+          </div>
+          <div class="stat-card">
+            <h3>Average Losses</h3>
+            <p id="avg-losses">0</p>
+          </div>
+          <div class="stat-card">
+            <h3>Players Who Wanted to Buy</h3>
+            <p id="players-wanted-buy">0</p>
+          </div>
+          <div class="stat-card">
+            <h3>Average Net Profit/Loss</h3>
+            <p id="avg-net">0</p>
+          </div>
+        </div>
+      </div>
+      <div class="dashboard-charts">
+        <h2>Visualizations</h2>
+        <div class="chart-container">
+          <canvas id="wins-vs-losses-chart"></canvas>
+        </div>
+        <div class="chart-container">
+          <canvas id="coins-left-chart"></canvas>
+        </div>
+        <div class="chart-container">
+          <canvas id="coin-balance-time-chart"></canvas>
+        </div>
+        <div class="chart-container">
+          <canvas id="time-between-spins-chart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div id="slot-machine" class="screen hidden">
+      <div class="game-header">
+        <h1>Lucky Slots</h1>
+        <div class="player-info">
+          <p>Coins: <span id="coin-balance">1000</span></p>
+        </div>
+      </div>
+      <div class="slot-container">
+        <div class="slot-machine">
+          <div class="reels">
+            <div class="reel" id="reel1">
+              <div class="symbol"></div>
+            </div>
+            <div class="reel" id="reel2">
+              <div class="symbol"></div>
+            </div>
+            <div class="reel" id="reel3">
+              <div class="symbol"></div>
+            </div>
+          </div>
+          <div class="controls">
+            <button id="spin-btn">Spin (40 coins)</button>
+          </div>
+          <div class="message" id="message"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="buy-more" class="modal hidden">
+      <div class="modal-content">
+        <h2>You're out of coins!</h2>
+        <p>Would you like to buy more?</p>
+        <div class="modal-buttons">
+          <button id="buy-coins-btn">Buy 1000 Coins</button>
+          <button id="no-thanks-btn">No Thanks</button>
+        </div>
+      </div>
+    </div>
+    
+    <div id="simulation-modal" class="modal hidden">
+      <div class="modal-content">
+        <h2>Run Simulation</h2>
+        <p>Create simulated players for testing</p>
+        <div class="input-group">
+          <label for="player-count">Number of Players:</label>
+          <input type="number" id="player-count" value="10" min="1" max="100">
+        </div>
+        <div class="input-group">
+          <label for="spins-per-player">Spins per Player:</label>
+          <input type="number" id="spins-per-player" value="30" min="1" max="1000">
+        </div>
+        <div class="modal-buttons">
+          <button id="start-simulation-btn">Start Simulation</button>
+          <button id="cancel-simulation-btn">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="sounds.js"></script>
+  <script src="app.js"></script>
+</body>
+</html> 
